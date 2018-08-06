@@ -1,0 +1,25 @@
+language: python
+cache: pip
+sudo: false
+python:
+  - "3.4"
+  - "3.5"
+  - "3.6"
+  - "pypy3"
+install:
+  - pip install codecov pytest-cov
+matrix:
+  include:
+    - python: "3.7"
+      sudo: required
+      dist: xenial
+    - python: "nightly"
+      sudo: required
+      dist: xenial
+  allow_failures:
+    - python: "nightly"
+script:
+  - pip install -e ".[testing]"
+  - pytest --cov --cov-report=
+after_success:
+  - codecov
