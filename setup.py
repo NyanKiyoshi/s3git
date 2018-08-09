@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-from setuptools import setup
 from sys import version_info
 
+from setuptools import setup
 
 requirements = [
     'GitPython==2.1.11',
@@ -21,7 +21,6 @@ setup(
     author_email='hello@vanille.bid',
     url='https://github.com/NyanKiyoshi/s3git',
     py_modules=['s3git'],
-    packages=['s3git'],
     entry_points="""
         [console_scripts]
         s3git-sync=s3git.__main__:main
@@ -39,6 +38,6 @@ setup(
     include_package_data=True,
     install_requires=requirements,
     extras_require=dict(
-        testing=['pytest']
+        testing=['pytest', 'pytest-mock', 'moto', 'google-compute-engine']
     )
 )

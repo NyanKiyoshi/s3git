@@ -5,25 +5,33 @@ from io import BytesIO
 from typing import Pattern, Union
 
 from git import InvalidGitRepositoryError, Repo, Tree
-
 from s3git.exceptions import *
+from s3git.fileignore import get_parser, retrieve_ignore_patterns
 from s3git.s3 import S3Bucket
-from s3git.fileignore import retrieve_ignore_patterns_from_files
 
 REV_FILE_NAME = '.s3git-rev'
 
 
 logger = logging.getLogger(__name__)
 
+IGNORE_FILE_PATH = os.getenv('IGNORE_FILE_PATH', '.s3ignore')
 
-# TODO: drop .gitignore
-FILE_IGNORE_LIST = (
-    ('.gitignore', True),
-    ('.s3ignore', False))
+W_INEXISTING_IGNORE_FILE = 'Ignore file %s does not exist.'
+W_DIRTY_REPO_MSG = 'The repository contains uncommitted ' \
+                   'changes that will not be synced.'
 
 
-def _retrieve_ignore_list():
-    return retrieve_ignore_patterns_from_files(FILE_IGNORE_LIST)
+def _retrieve_ignore_list(use_wildcard):
+    path = IGNORE_FILE_PATH
+    parser = get_parser(use_wildcard)
+
+    if os.path.isfile(path):
+        ignore_list = retrieve_ignore_patterns(path, parser)
+    else:
+        ignore_list = []
+        logger.warn(W_INEXISTING_IGNORE_FILE, path)
+
+    return ignore_list
 
 
 def get_repo():
@@ -35,30 +43,41 @@ def get_repo():
         raise InvalidRepository(path) from exc
 
     if repo.is_dirty():
-        logger.warn(
-            'The repository contains uncommitted '
-            'changes that will not be synced.')
+        logger.warn(W_DIRTY_REPO_MSG)
 
     return repo
 
 
 class S3GitSync:
-    def __init__(self, branch: Union[str, None], force_reupload=False):
+    def __init__(
+            self,
+            branch: Union[str, None],
+            force_reupload=False, use_wildcard=False):
+
         self.repo = get_repo()
 
         # if no branch or revision to sync from was passed,
         # we set to sync from the current branch
         if not branch:
-            branch = self.repo.active_branch
+            branch = self.repo.active_branch.name
 
+        # TODO: remove this, it is unused
         self.branch = branch
 
-        self.s3_settings = S3Bucket.read_config(branch.name)
-        self.ignore_list = _retrieve_ignore_list()
+        self.s3_settings = S3Bucket.read_config(branch)
+        self.ignore_list = _retrieve_ignore_list(use_wildcard)
 
         self.old_tree = self.get_empty_tree() \
             if force_reupload else self.get_remote_tree()
-        self.target_tree = self.repo.tree(self.repo.commit(branch))
+        self.target_tree = self.get_tree(self.repo.commit(branch))
+
+    def _get_s3_current_commit(self):
+        fp = self.s3_settings.get_file(REV_FILE_NAME)
+
+        if fp:
+            commit = fp.readline().decode()
+            return commit
+        return None
 
     def is_ignored(self, file):
         for pattern in self.ignore_list:  # type: Pattern
@@ -67,8 +86,11 @@ class S3GitSync:
         return False
 
     def get_empty_tree(self):
-        return self.repo.tree(
+        return self.get_tree(
             self.repo.git.hash_object('-w', '-t', 'tree', os.devnull))
+
+    def get_tree(self, commit):
+        return self.repo.tree(commit)
 
     def get_remote_tree(self):
         """
@@ -76,17 +98,11 @@ class S3GitSync:
         or `None` if the bucket doesn't have one
         (implies we are starting on a clean tree).
         """
-        commit = None
-        path = REV_FILE_NAME
+        current_s3_commit = self._get_s3_current_commit()
 
-        fp = self.s3_settings.get_file(path)
-
-        if fp:
-            commit = fp.readline().decode()
-
-        if not commit:
-            return self.get_empty_tree()
-        return self.repo.tree(commit)
+        if current_s3_commit:
+            return self.get_tree(current_s3_commit)
+        return self.get_empty_tree()
 
     def _get_file_content(self, sha1_hash, file):
         content_str = self.repo.git.show('%s:%s' % (sha1_hash, file))

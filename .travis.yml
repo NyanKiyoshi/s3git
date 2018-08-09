@@ -17,6 +17,7 @@ matrix:
       sudo: required
       dist: xenial
   allow_failures:
+    - python: "pypy3"
     - python: "nightly"
 script:
   - pip install -e ".[testing]"

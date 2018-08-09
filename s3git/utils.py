@@ -4,6 +4,7 @@ class cached_property(object):
         self._f = f
 
     def __get__(self, obj, owner):
-        assert obj is not None, 'call {} on an instance'.format(self._fname)
+        if self._fname in obj.CACHED_DATA:
+            return obj.CACHED_DATA[self._fname]
         ret = obj.CACHED_DATA[self._fname] = self._f(obj)
         return ret

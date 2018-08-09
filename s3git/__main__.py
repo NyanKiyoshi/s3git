@@ -1,6 +1,6 @@
-from sys import argv
 import argparse
 import logging
+from sys import argv
 
 from s3git.core import S3GitSync
 from s3git.exceptions import BaseError
@@ -14,10 +14,16 @@ logger = logging.getLogger(__name__)
 def _parse_arguments(*args):
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        'branch', nargs='?', default=None,
+        'branch', nargs='?',
+        default=None,
         help='commit, head or branch to sync at')
     parser.add_argument(
-        '-f', dest='force_reupload', default=False, action='store_true',
+        '-f', dest='force_reupload',
+        default=False, action='store_true',
+        help='forces a whole reupload')
+    parser.add_argument(
+        '-w', '--wildcard', dest='use_wildcard',
+        default=False, action='store_true',
         help='forces a whole reupload')
     return parser.parse_args(args)
 
