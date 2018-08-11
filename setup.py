@@ -38,6 +38,6 @@ setup(
     include_package_data=True,
     install_requires=requirements,
     extras_require=dict(
-        testing=['pytest', 'pytest-mock', 'moto', 'google-compute-engine']
+        testing=['pytest', 'pytest-mock', 'moto']
     )
 )

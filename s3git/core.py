@@ -142,7 +142,10 @@ class S3GitSync:
         if status in ['A', 'M']:
             for path in target_paths:
                 fp = self._get_file_content(self.target_tree, path)
-                self.s3_settings.upload(fp, path)
+                try:
+                    self.s3_settings.upload(fp, path)
+                finally:
+                    fp.close()
         elif status == 'D':
             logger.info('Instructing to delete %d files', len(target_paths))
             self.s3_settings.delete_files(target_paths)
@@ -150,8 +153,8 @@ class S3GitSync:
             raise UnexpectedDiffStatus(status)
 
     def _upload_new_commit_value(self):
-        fp = BytesIO(self.target_tree.hexsha.encode())
-        self.s3_settings.upload(fp, REV_FILE_NAME)
+        with BytesIO(self.target_tree.hexsha.encode()) as fp:
+            self.s3_settings.upload(fp, REV_FILE_NAME)
 
     def synchronize(self):
         logger.info(

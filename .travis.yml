@@ -21,6 +21,8 @@ matrix:
     - python: "nightly"
 script:
   - pip install -e ".[testing]"
-  - pytest --cov --cov-report=
+  # `BOTO_CONFIG=` prevent travis from editing the boto3 configuration and thus crashing;
+  #  see https://github.com/spulec/moto/issues/1771
+  - BOTO_CONFIG=/dev/null pytest --cov --cov-report=
 after_success:
   - codecov

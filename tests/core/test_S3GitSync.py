@@ -62,21 +62,8 @@ def test__get_diffs_with_empty_tree(_, s3git, git_repo, s3git_tracked_files):
 
 
 @mock.patch('s3git.core.logger')
-def test__get_diffs_without_empty_tree(_, s3git, git_repo, s3git_tracked_files):
-    old_tree = git_repo.active_branch.commit.tree
-
-    file_deleted = s3git_tracked_files.pop()
-    file_modified = s3git_tracked_files.pop()
-
-    os.remove(file_deleted)
-    open(file_modified, 'wb').close()
-
-    expected_diff = {
-        'D': [file_deleted], 'M': [file_modified]}
-
-    git_repo.git.add(u=True)
-    new_tree = git_repo.index.commit('Various changes').tree
-
+def test__get_diffs_without_empty_tree(_, s3git, git_repo, diff_commit):
+    old_tree, expected_diff, new_tree = diff_commit
     s3git.old_tree, s3git.target_tree = old_tree, new_tree
 
     assert s3git._get_diffs() == expected_diff

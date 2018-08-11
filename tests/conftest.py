@@ -94,28 +94,67 @@ def git_repo(tmpdir, test_files):
 
 
 @pytest.fixture
-def s3git(git_repo, mocker):
-    # patches
-    mocked_s3_commit = mocker.patch.object(S3GitSync, '_get_s3_current_commit')
-    mocked_s3_commit.return_value = None
-
-    config_path = os.path.join(git_repo.working_dir, S3CONFIG_PATH)
-
-    with open(config_path, 'w') as w:
-        w.write("""\
+def _repo_config():
+    return """\
 [default]
 S3_ACCESS_KEY_ID = id
 S3_SECRET_ACCESS_KEY = secret
-S3_BUCKET_NAME = bucket
+S3_BUCKET_NAME = testBucket
 
 [hello]
 S3_ACCESS_KEY_ID = hi_id
 S3_SECRET_ACCESS_KEY = hi_secret
 S3_BUCKET_NAME = hi_bucket
-""")
+"""
+
+
+@pytest.fixture
+def s3git_unpatched(s3_bucket, git_repo, _repo_config):
+    config_path = os.path.join(git_repo.working_dir, S3CONFIG_PATH)
+
+    with open(config_path, 'w') as w:
+        w.write(_repo_config)
 
     s3git_instance = S3GitSync(None)
     return s3git_instance
+
+
+@pytest.fixture
+def s3git(s3git_unpatched, mocker):
+    # patches
+    mocked_s3_commit = mocker.patch.object(
+        s3git_unpatched, '_get_s3_current_commit')
+    mocked_s3_commit.return_value = None
+    return s3git_unpatched
+
+
+@pytest.fixture
+def diff_commit(git_repo, s3git_tracked_files):
+    previous_tree = git_repo.active_branch.commit.tree
+
+    file_deleted = s3git_tracked_files.pop()
+    file_modified = s3git_tracked_files.pop()
+    file_added = 'new-file'
+
+    # delete the first file
+    os.remove(file_deleted)
+
+    # edit the second file
+    with open(file_modified, 'wb') as fp:
+        fp.write(b'Dummy')
+
+    # add the third file
+    with open(file_added, 'w') as fp:
+        fp.write('Another dummy')
+    git_repo.git.add(file_added)
+
+    # commit the changes
+    git_repo.git.add(u=True)
+    new_tree = git_repo.index.commit('Various changes').tree
+
+    diff = {
+        'D': [file_deleted], 'M': [file_modified], 'A': [file_added]}
+    return previous_tree, diff, new_tree
 
 
 @pytest.fixture(autouse=True)
