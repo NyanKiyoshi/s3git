@@ -5,15 +5,20 @@ from os.path import isfile
 from typing import Callable, List, Pattern, Sequence, TextIO, Tuple
 
 T_PARSER_CALLABLE = Callable[[str], Pattern]
+REGEX_PARSER = re.compile
 
 logger = logging.getLogger(__name__)
 
 
-def parse_wildcard_to_regex(pattern: str) -> Pattern:
+def wildcard_to_regex_parser(pattern: str) -> Pattern:
     """Parses a wildcard pattern to a compiled regex object."""
     regex_pattern = fnmatch.translate(pattern)
-    compiled_regex = re.compile(regex_pattern)
+    compiled_regex = REGEX_PARSER(regex_pattern)
     return compiled_regex
+
+
+def get_parser(use_wildcard):
+    return wildcard_to_regex_parser if use_wildcard else REGEX_PARSER
 
 
 def compile_ignore_file(
@@ -57,31 +62,3 @@ def retrieve_ignore_patterns(
     with open(path) as fp:
         patterns = compile_ignore_file(fp, parser)
         return patterns
-
-
-def retrieve_ignore_patterns_from_files(
-        instructions: Sequence[Tuple[str, bool]]) -> List[Pattern]:
-    """
-    Parses the content of a given list of paths to a list of regex patterns.
-
-    >>> retrieve_ignore_patterns_from_files([
-    ...    # this file is containing extended regex patterns,
-    ...    # we set `use_wildcards` to False
-    ...    ('.s3ignore', False),
-    ...
-    ...    # # this file is containing wildcards patterns,
-    ...    # we set `use_wildcards` to True
-    ...    ('.gitignore', True)
-    ... ])
-    """
-    patterns = []
-
-    for path, use_wildcards in instructions:
-        if isfile(path):
-            parser = parse_wildcard_to_regex if use_wildcards else re.compile
-            new_patterns = retrieve_ignore_patterns(path, parser)
-            patterns += new_patterns
-        else:
-            logger.warn('Ignore file %s does not exist.', path)
-
-    return patterns

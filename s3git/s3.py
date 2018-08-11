@@ -6,8 +6,8 @@ from tempfile import SpooledTemporaryFile
 
 import boto3
 import botocore.exceptions
-from magic import from_buffer
 
+from magic import from_buffer
 from s3git.exceptions import *
 from s3git.utils import cached_property
 
@@ -85,8 +85,8 @@ class S3Bucket:
 
             # If a client error is thrown, then check that it was a 404 error.
             # If it was a 404 error, then the file does not exist.
-            error_code = int(exc.response['Error']['Code'])
-            if error_code == 404:
+            error_code = exc.response['Error']['Code']
+            if error_code == '404':
                 fp = None
             else:
                 raise exc
