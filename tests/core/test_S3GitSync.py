@@ -63,9 +63,7 @@ def test__get_diffs_with_empty_tree(_, s3git, git_repo, s3git_tracked_files):
 
 @mock.patch('s3git.core.logger')
 def test__get_diffs_without_empty_tree(_, s3git, git_repo, diff_commit):
-    old_tree, expected_diff, new_tree = diff_commit
-    s3git.old_tree, s3git.target_tree = old_tree, new_tree
-
+    s3git.old_tree, expected_diff, s3git.target_tree = diff_commit
     assert s3git._get_diffs() == expected_diff
 
 

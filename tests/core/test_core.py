@@ -124,7 +124,7 @@ def test_synchronize_from_empty_tree(
     s3git._upload_new_commit_value.reset_mock()
     s3git._upload_diffs.reset_mock()
 
-    # to remote repo should be up to date, there is nothing to sync anymore
+    # the remote repo should be up to date, there is nothing to sync anymore
     # thus nothing should happen, except raising an exception
     s3git.__init__(None)
     with pytest.raises(RemoteUpToDate):
